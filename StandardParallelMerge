@@ -1,0 +1,63 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <execution>
+#include <chrono>
+
+template<typename RandomIt>
+void parallel_merge_sort(RandomIt first, RandomIt last) {
+    const auto size = std::distance(first, last);
+    if (size <= 1) {
+        return;
+    }
+
+    const auto middle = std::next(first, size / 2);
+
+    parallel_merge_sort(first, middle);
+    parallel_merge_sort(middle, last);
+
+    std::vector<typename std::iterator_traits<RandomIt>::value_type> buffer(size);
+    std::merge(std::execution::par, first, middle, middle, last, buffer.begin());
+
+    std::copy(buffer.begin(), buffer.end(), first);
+}
+
+int main() {
+
+    auto N_Max = 1024*1024*16; // 64 Mebi, int size is 4 bytes so 16mil items x 4
+
+    for (int it = 0; it < 10; it++) {
+        std::cout << "Iteration " << it << std::endl;
+        std::cout << "N  Runtime(us)  IsParallel" << std::endl;
+        int N = 2;
+        while (N <= N_Max)
+        {
+
+            std::vector<std::vector<int>> L_IN{ };
+            std::vector<int> List{};
+            for (auto i = 1; i <= N; ++i) {
+                L_IN.push_back(std::vector<int>(1, N - i));
+                List.push_back(N - i);
+            }
+
+
+            auto t1 = std::chrono::high_resolution_clock::now();
+
+            parallel_merge_sort(std::begin(List), std::end(List));
+
+            auto t2 = std::chrono::high_resolution_clock::now();
+
+            auto us_int = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+            std::cout << N << ", " << (long long)us_int.count() << "\n";
+
+            //std::cout << "\n Sorted \n";
+
+            /*std::cout << "{";
+            for (auto el : List)
+                std::cout << el << " ";
+
+            std::cout << "}";*/
+            N *= 2;
+        }
+    }
+}
